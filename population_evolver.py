@@ -29,65 +29,72 @@ def get_random_strategy(num_locations: int, num_forces: int) -> list[int]:
     return strategy
 
 
-class Strategy():
-
-    def __init__(self, strategy: list[int], mutability: float) -> None:
-        self.commands = strategy
-        self.mutability = mutability
-        self.num_locations = len(strategy)
-
-    def get_child(self):
-        """
-        Produces a child strategy with either identical characterists or a
-        mutation with a probability determined by this strategies mutability
-        """
-        seed = random.uniform(0, 1)
-        child = Strategy(self.commands.copy(), self.mutability)
-        mutations = 0
-        while seed < self.mutability * 0.5 ** mutations:
-            child.mutate()
-            mutations += 1
-        return child
-
-    def mutate(self) -> None:
-        while self.commands[(
-                choices := get_random_pair(list(range(self.num_locations))))[0]] == 0:
-            continue
-        self.mutability = self.mutability * random.uniform(0.75, 1.25)
-        self.commands[choices[0]] -= 1
-        self.commands[choices[1]] += 1
-
-    def __repr__(self) -> str:
-        return f"[{','.join(str(num) for num in self.commands)}]"
+def get_child(strat, mutability):
+    """
+    Produces a child strategy with either identical characterists or a
+    mutation with a probability determined by this strategies mutability
+    """
+    seed = random.uniform(0, 1)
+    mutations = 0
+    child = strat
+    while seed < mutability * 0.5 ** mutations:
+        child = mutate(child)
+        mutations += 1
+    return child
 
 
-def get_point_advantage(strat_1: Strategy, strat_2: Strategy) -> int:
+def mutate(strat) -> None:
+    while strat[(
+            choices := get_random_pair(list(range(len(strat)))))[0]] == 0:
+        continue
+    mutant = list(strat)
+    mutant[choices[0]] -= 1
+    mutant[choices[1]] += 1
+    return tuple(mutant)
+
+
+def decide_game(strat_1: tuple, strat_2: tuple) -> int:
     """This calculates the point advanatage of strat 1 over strat 2 in the general's game"""
-    return sum(value * ((armies[0] > armies[1]) - (armies[0] < armies[1])) for value, armies in enumerate(zip(strat_1, strat_2), 1))
+    point_advantage = sum(value * ((armies[0] > armies[1]) - (armies[0] < armies[1]))
+                          for value, armies in enumerate(zip(strat_1, strat_2), 1))
+    if point_advantage >= 1:
+        return strat_1, strat_2
+    return strat_2, strat_1
 
 
 class Population():
 
-    def __init__(self, size: int, num_locations: int, num_forces: int, default_mutability: float) -> None:
-        # self.strategies = [Strategy(get_random_strategy(
-        #     num_locations, num_forces), default_mutability) for i in range(size)]
-        self.strategies = [Strategy(
-            [num_forces] + [0]*(num_locations - 1), default_mutability) for i in range(size)]
+    def __init__(self, size: int, num_locations: int, num_forces: int, mutability: float) -> None:
+        self.size = size
+        self.strategies = {(num_forces,)+(0,)*(num_locations-1): size}
+        self.history = {(num_forces,)+(0,)*(num_locations-1): size}
+        self.mutability = mutability
+        self.solved_games = {}
 
-    def run_simulation_step(self) -> None:
-        strat_1, strat_2 = get_random_pair(self.strategies)
-        point_advantage = get_point_advantage(
-            strat_1.commands, strat_2.commands)
-        if point_advantage >= 1:
-            self.strategies.remove(strat_2)
-            del strat_2
-            self.strategies.append(strat_1.get_child())
-            # record.append(repr(strat_1))
-        else:
-            self.strategies.remove(strat_1)
-            del strat_1
-            self.strategies.append(strat_2.get_child())
-            # record.append(repr(strat_2))
+    def run_simulation_step(self, currrent_step: int) -> None:
+        stabalise = False
+        strat_1, strat_2 = random.choices(
+            list(self.strategies.keys()), self.strategies.values(), k=2)
+        # if currrent_step % 10:
+        #     strat_1, strat_2 = random.choices(
+        #         list(self.strategies.keys()), self.strategies.values(), k=2)
+        # else:
+        #     stabalise = True
+        #     strat_1, strat_2 = random.choices(
+        #         [strat for strat in self.history if self.strategies[strat] > 1],
+        #         [self.history[strat]
+        #             for strat in self.history if self.strategies[strat] > 1],
+        #         k=2
+        #     )
+        winner, loser = self.solved_games.get((strat_1, strat_2), decide_game(
+            strat_1, strat_2))
+        self.solved_games[(strat_1, strat_2)] = winner, loser
+        if currrent_step % 10 == 0 and self.strategies[winner]/self.size > self.history[winner]/sum(self.history.values()):
+            return None
+        self.strategies[loser] -= 1
+        child = get_child(winner, self.mutability)
+        self.strategies[child] = self.strategies.get(child, 0) + 1
+        self.history[child] = self.history.get(child, 0) + 1
 
     def run_simulation_console(self, steps_between_print: int) -> None:
         while input('Continue simulation?') != 'stop':
@@ -104,10 +111,11 @@ class Population():
         while True:
             for i in range(steps_between_print):
                 current_step += 1
-                self.run_simulation_step()
-                current_population = pd.Series(
-                    [repr(strat) for strat in self.strategies]).value_counts().to_frame()
-                current_population['strat'] = current_population.index
+                self.run_simulation_step(current_step)
+                current_population = pd.DataFrame({
+                    'strat': [','.join(str(num) for num in strat) for strat in self.strategies.keys()],
+                    'count': self.strategies.values()
+                })
                 current_population['step'] = current_step
                 data = pd.concat([data, current_population])
             chart = alt.Chart(data).mark_line().encode(
