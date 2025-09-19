@@ -53,30 +53,48 @@ def mutate(strat) -> None:
     return tuple(mutant)
 
 
-def get_point_advantage(strat_1: tuple, strat_2: tuple) -> int:
+def decide_game(strat_1: tuple, strat_2: tuple) -> int:
     """This calculates the point advanatage of strat 1 over strat 2 in the general's game"""
-    return sum(value * ((armies[0] > armies[1]) - (armies[0] < armies[1])) for value, armies in enumerate(zip(strat_1, strat_2), 1))
+    point_advantage = sum(value * ((armies[0] > armies[1]) - (armies[0] < armies[1]))
+                          for value, armies in enumerate(zip(strat_1, strat_2), 1))
+    if point_advantage >= 1:
+        return strat_1, strat_2
+    return strat_2, strat_1
 
 
 class Population():
 
     def __init__(self, size: int, num_locations: int, num_forces: int, mutability: float) -> None:
+        self.size = size
         self.strategies = {(num_forces,)+(0,)*(num_locations-1): size}
+        self.history = {(num_forces,)+(0,)*(num_locations-1): size}
         self.mutability = mutability
+        self.solved_games = {}
 
-    def run_simulation_step(self) -> None:
+    def run_simulation_step(self, currrent_step: int) -> None:
+        stabalise = False
         strat_1, strat_2 = random.choices(
             list(self.strategies.keys()), self.strategies.values(), k=2)
-        point_advantage = get_point_advantage(
-            strat_1, strat_2)
-        if point_advantage >= 1:
-            self.strategies[strat_2] -= 1
-            child = get_child(strat_1, self.mutability)
-            self.strategies[child] = self.strategies.get(child, 0) + 1
-        else:
-            self.strategies[strat_1] -= 1
-            child = get_child(strat_2, self.mutability)
-            self.strategies[child] = self.strategies.get(child, 0) + 1
+        # if currrent_step % 10:
+        #     strat_1, strat_2 = random.choices(
+        #         list(self.strategies.keys()), self.strategies.values(), k=2)
+        # else:
+        #     stabalise = True
+        #     strat_1, strat_2 = random.choices(
+        #         [strat for strat in self.history if self.strategies[strat] > 1],
+        #         [self.history[strat]
+        #             for strat in self.history if self.strategies[strat] > 1],
+        #         k=2
+        #     )
+        winner, loser = self.solved_games.get((strat_1, strat_2), decide_game(
+            strat_1, strat_2))
+        self.solved_games[(strat_1, strat_2)] = winner, loser
+        if currrent_step % 10 == 0 and self.strategies[winner]/self.size > self.history[winner]/sum(self.history.values()):
+            return None
+        self.strategies[loser] -= 1
+        child = get_child(winner, self.mutability)
+        self.strategies[child] = self.strategies.get(child, 0) + 1
+        self.history[child] = self.history.get(child, 0) + 1
 
     def run_simulation_console(self, steps_between_print: int) -> None:
         while input('Continue simulation?') != 'stop':
@@ -93,7 +111,7 @@ class Population():
         while True:
             for i in range(steps_between_print):
                 current_step += 1
-                self.run_simulation_step()
+                self.run_simulation_step(current_step)
                 current_population = pd.DataFrame({
                     'strat': [','.join(str(num) for num in strat) for strat in self.strategies.keys()],
                     'count': self.strategies.values()
