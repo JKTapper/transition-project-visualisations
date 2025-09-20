@@ -122,6 +122,8 @@ class Population():
                 x='step',
                 y='sum(count):Q',
                 color='strat:N'
+            ).properties(
+                width=2000
             )
             st.altair_chart(chart)
 
