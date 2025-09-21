@@ -53,10 +53,15 @@ def mutate(strat) -> None:
     return tuple(mutant)
 
 
+def get_point_advantage(strat_1: tuple, strat_2: tuple) -> int:
+    """This calculates the point advanatage of strat 1 over strat 2 in the general's game"""
+    return sum(value * ((armies[0] > armies[1]) - (armies[0] < armies[1]))
+               for value, armies in enumerate(zip(strat_1, strat_2), 1))
+
+
 def decide_game(strat_1: tuple, strat_2: tuple) -> int:
     """This calculates the point advanatage of strat 1 over strat 2 in the general's game"""
-    point_advantage = sum(value * ((armies[0] > armies[1]) - (armies[0] < armies[1]))
-                          for value, armies in enumerate(zip(strat_1, strat_2), 1))
+    point_advantage = get_point_advantage(strat_1, strat_2)
     if point_advantage >= 1:
         return strat_1, strat_2
     return strat_2, strat_1
@@ -97,13 +102,15 @@ class Population():
         self.history[child] = self.history.get(child, 0) + 1
 
     def run_simulation_console(self, steps_between_print: int) -> None:
+        current_step = 0
         while input('Continue simulation?') != 'stop':
             for i in range(steps_between_print):
-                self.run_simulation_step()
+                self.run_simulation_step(current_step)
+                current_step += 1
             st.write('Current status:')
             st.write(self)
-            st.write("Cumulative report:")
-            st.write(self.cumulative_report())
+            # st.write("Cumulative report:")
+            # st.write(self.cumulative_report())
 
     def run_simulation_dashboard(self, steps_between_print: int) -> None:
         data = pd.DataFrame({'step': [], 'strat': [], 'count': []})
@@ -128,11 +135,9 @@ class Population():
             st.altair_chart(chart)
 
     def __str__(self):
-        population_report = str(pd.Series(repr(strat)
+        population_report = str(pd.Series(str(strat)
                                 for strat in self.strategies).value_counts())
-        average_mutability = statistics.mean(
-            strat.mutability for strat in self.strategies)
-        return f"Average mutability: {average_mutability}\nPopulation:\n{population_report}"
+        return f"Population:\n{population_report}"
 
     # def cumulative_report(self):
     #     cumulative_counts = pd.Series(record).value_counts(ascending=True)
