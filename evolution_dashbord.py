@@ -1,3 +1,4 @@
+"""Streamlit code for the dashboard"""
 import streamlit as st
 from population_evolver import Population
 
@@ -38,4 +39,4 @@ num_locations = st.number_input(
 num_forces = st.number_input(
     "How many soldiers does each side have to allocate?", value=2)
 pop = Population(1000, num_locations, num_forces, 0.01)
-pop.run_simulation_dashboard(25000)
+pop.run_simulation_dashboard(25000, 0.01)
