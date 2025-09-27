@@ -1,8 +1,10 @@
 """Tests for the evolutionary simulation"""
+import os
 from unittest.mock import patch
 import pytest
-from population_evolver import get_random_strategy, get_point_advantage
-from population_evolver import Population, mutate, get_child, decide_game
+import pandas as pd
+from population_evolver import get_random_strategy, get_point_advantage, encode_tuple_tuple
+from population_evolver import Population, mutate, get_child, decide_game, decode_tuple_tuple
 
 
 def player_chooses(choices: list, monkeypatch) -> None:
@@ -146,3 +148,29 @@ def test_run_simulation_small_step(monkeypatch):
     population = Population.create(5, 2, 3)
     population.run_simulation_console(1, 0.1)
     assert max(population.strategies.values()) == population.strategies[(0, 3)]
+
+
+def test_population_saving_and_loading():
+    population = Population(
+        {(1, 0): 1},
+        {(1, 0): 1},
+        {},
+        pd.Dataframe({'step': [0], 'strat': [(1, 0)], 'count': 1})
+    )
+    population.save_name = 'test'
+    population.save()
+    copy = Population.load('test')
+    assert population.history.equals(copy.history)
+    assert population.strategies == copy.strategies
+    assert population.cumulative_strategies == copy.cumulative_strategies
+    assert population.solved_games == copy.solved_games
+
+
+def test_tuple_tuple_encoding():
+    assert encode_tuple_tuple(
+        ((1, 2, 3), (4, 5, 6), (7, 8, 9))) == '1,2,3 4,5,6 7,8,9'
+
+
+def test_tuple_tuple_decoding():
+    assert decode_tuple_tuple('1,2,3 4,5,6 7,8,9') == (
+        (1, 2, 3), (4, 5, 6), (7, 8, 9))

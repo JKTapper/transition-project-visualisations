@@ -1,5 +1,6 @@
 """The simulation for the evolutionary simulation"""
 import random
+import json
 import pandas as pd
 import streamlit as st
 import altair as alt
@@ -69,6 +70,22 @@ def decide_game(strat_1: tuple, strat_2: tuple) -> int:
     return strat_2, strat_1
 
 
+def encode_tuple(tuple: tuple):
+    return ','.join(str(i) for i in tuple)
+
+
+def decode_tuple(tuple_str: str):
+    return tuple(int(num) for num in tuple_str.split(','))
+
+
+def encode_tuple_tuple(tuple_tuple: tuple[tuple]):
+    return ' '.join(encode_tuple(tuple) for tuple in tuple_tuple)
+
+
+def decode_tuple_tuple(tuple_tuple_str: str):
+    return tuple(decode_tuple(tuple_str) for tuple_str in tuple_tuple_str.split())
+
+
 class Population():
     """A class for the population of strategies being simulated"""
 
@@ -93,8 +110,8 @@ class Population():
             strategies = {(num_forces,)+(0,)*(num_locations-1): size}
         cumulative_strategies = strategies.copy()
         solved_games = {}
-        history = pd.concat(pd.DataFrame(
-            {'step': 0, 'strat': strat, 'count': count} for strat, count in strategies.items()))
+        history = pd.DataFrame(
+            {'step': 0, 'strat': strat, 'count': count} for strat, count in strategies.items())
         return Population(
             strategies,
             cumulative_strategies,
@@ -105,7 +122,18 @@ class Population():
     @classmethod
     def load(cls, file: str):
         """Initialises a saved instance of the population class using a file"""
-        pass
+        with open(f'{file}.json', 'r') as f:
+            info = json.load(f)
+        history = pd.read_csv(f'{file}.csv')
+        return Population(
+            {decode_tuple(strat): count for strat,
+             count in info['strategies'].items()},
+            {decode_tuple(strat): count for strat,
+             count in info['cumulative_strategies'].items()},
+            {decode_tuple_tuple(pair): decode_tuple_tuple(result)
+             for pair, result in info['solved_games'].items()},
+            history
+        )
 
     def __init__(
         self,
@@ -120,6 +148,9 @@ class Population():
         self.solved_games = solved_games
         self.history = history
         self.size = sum(self.strategies.values())
+        strat = list(self.strategies.keys())[0]
+        self.num_locations, self.num_forces = len(strat), sum(strat)
+        self.save_name = f'l{self.num_locations}f{self.num_forces}'
 
     def run_simulation_step(self, currrent_step: int, mutability: float) -> None:
         """Runs a single step of the evolutionary simulation"""
@@ -130,14 +161,15 @@ class Population():
         self.solved_games[(strat_1, strat_2)] = winner, loser
         if currrent_step % 10 == 0:
             current_prevelance = self.strategies[winner]/self.size
-            historic_prevelance = self.history[winner] / \
-                sum(self.history.values())
+            historic_prevelance = self.cumulative_strategies[winner] / \
+                sum(self.cumulative_strategies.values())
             if current_prevelance > historic_prevelance:
                 return None
         self.strategies[loser] -= 1
         child = get_child(winner, mutability)
         self.strategies[child] = self.strategies.get(child, 0) + 1
-        self.history[child] = self.history.get(child, 0) + 1
+        self.cumulative_strategies[child] = self.cumulative_strategies.get(
+            child, 0) + 1
         return None
 
     def run_simulation_console(self, steps_between_print: int, mutability: float) -> None:
@@ -149,6 +181,7 @@ class Population():
                 current_step += 1
             print('Current status:')
             print(self)
+            self.save()
 
     def run_simulation_dashboard(self, steps_between_print: int, mutability: float) -> None:
         """Used for running the simulation from the dashboard"""
@@ -175,11 +208,25 @@ class Population():
             st.altair_chart(chart)
 
     def __str__(self):
-        population_report = str(pd.Series(str(strat)
-                                for strat in self.strategies).value_counts())
+        population_report = str(pd.DataFrame(
+            {'strat': strat, 'count': count} for strat, count in sorted(self.strategies.items(), key=lambda x: x[1])))
         return f"Population:\n{population_report}"
+
+    def save(self):
+        with open(f'{self.save_name}.csv', 'w') as f:
+            self.history.to_csv(f)
+        info = {
+            'strategies': {encode_tuple(strat): count for strat, count in self.strategies.items()},
+            'cumulative_strategies': {encode_tuple(strat): count for strat, count in self.cumulative_strategies.items()},
+            'solved_games': {encode_tuple_tuple(pair): (encode_tuple_tuple(result)) for pair, result in self.solved_games.items()},
+        }
+        with open(f'{self.save_name}.json', 'w') as f:
+            json.dump(info, f)
 
 
 if __name__ == '__main__':
-    population = Population.create(1000, 5, 5)
-    population.run_simulation_console(1000000, 0.01)
+    population = Population.create(10000, 5, 5)
+    population.run_simulation_console(10000, 0.01)
+    input('load?')
+    population = Population.load('l5f5')
+    print(population)
