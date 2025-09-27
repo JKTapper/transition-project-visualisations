@@ -73,13 +73,14 @@ class Population():
     """A class for the population of strategies being simulated"""
 
     @classmethod
-    def create(size: int,
+    def create(cls,
+               size: int,
                num_locations: int,
                num_forces: int,
                random_pop: bool = False
                ) -> None:
         """
-        Creates an object of the population class, with
+        Creates a new object of the population class, with
         either a random or uniformly weak population
         """
         if random_pop:
@@ -93,7 +94,7 @@ class Population():
         cumulative_strategies = strategies.copy()
         solved_games = {}
         history = pd.concat(pd.DataFrame(
-            {'step': 0, 'strat': strat, 'count': strategies[strat]} for strat in strategies))
+            {'step': 0, 'strat': strat, 'count': count} for strat, count in strategies.items()))
         return Population(
             strategies,
             cumulative_strategies,
@@ -102,7 +103,8 @@ class Population():
         )
 
     @classmethod
-    def load():
+    def load(cls, file: str):
+        """Initialises a saved instance of the population class using a file"""
         pass
 
     def __init__(
@@ -112,6 +114,7 @@ class Population():
             solved_games: dict[tuple[tuple[int]]:tuple],
             history: pd.DataFrame
     ):
+        """Initalises a population according to given specifications"""
         self.strategies = strategies
         self.cumulative_strategies = cumulative_strategies
         self.solved_games = solved_games
@@ -178,5 +181,5 @@ class Population():
 
 
 if __name__ == '__main__':
-    population = Population(1000, 5, 5)
+    population = Population.create(1000, 5, 5)
     population.run_simulation_console(1000000, 0.01)

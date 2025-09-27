@@ -86,7 +86,22 @@ def test_decide_game(strat_1: list, strat_2: list, result: int):
 
 def test_population_init():
     """Tests that populations get initialised correctly"""
-    population = Population(100, 4, 10, 0.1)
+    population = Population(
+        strategies=[1],
+        cumulative_strategies=2,
+        solved_games=3,
+        history=4
+    )
+    assert population.strategies == [1]
+    assert population.cumulative_strategies == 2
+    assert population.solved_games == 3
+    assert population.history == 4
+    assert population.size == 1
+
+
+def test_population_create():
+    """Tests that new populations get created correctly"""
+    population = Population.create(100, 4, 10, 0.1)
     assert sum(population.strategies.values()) == 100
     strategy = set(population.strategies.keys()).pop()
     assert len(strategy) == 4
@@ -95,7 +110,7 @@ def test_population_init():
 
 def test_simulation_step_simple_win():
     """Tests that a simulation step replaces a strategy with a child"""
-    population = Population(2, 2, 1)
+    population = Population.create(2, 2, 1)
     strat_1 = (0, 1)
     strat_2 = (1, 0)
     population.strategies = {strat_1: 1, strat_2: 1}
@@ -108,7 +123,7 @@ def test_simulation_step_simple_win():
 
 def test_simulation_step_draw():
     """Tests that simulation steps only change populations in limited ways"""
-    population = Population(2, 3, 2)
+    population = Population.create(2, 3, 2)
     strat_1 = (0, 0, 2)
     strat_2 = (1, 1, 0)
     population.strategies = {strat_1: 1, strat_2: 1}
@@ -120,7 +135,7 @@ def test_simulation_step_draw():
 def test_run_simulation_big_step(monkeypatch):
     """Tests that leaving a simulation to run for many steps produces expected outcome"""
     player_chooses(['', "stop"], monkeypatch)
-    population = Population(5, 2, 3)
+    population = Population.create(5, 2, 3)
     population.run_simulation_console(1000, 0.1)
     assert max(population.strategies.values()) == population.strategies[(0, 3)]
 
@@ -128,6 +143,6 @@ def test_run_simulation_big_step(monkeypatch):
 def test_run_simulation_small_step(monkeypatch):
     """Tests that telling a simulation to run for many steps produces expected outcome"""
     player_chooses(['']*1000 + ["stop"], monkeypatch)
-    population = Population(5, 2, 3)
+    population = Population.create(5, 2, 3)
     population.run_simulation_console(1, 0.1)
     assert max(population.strategies.values()) == population.strategies[(0, 3)]
