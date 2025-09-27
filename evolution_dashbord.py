@@ -38,5 +38,6 @@ num_locations = st.number_input(
     "How many locations are the two sides fighting to control?", value=4)
 num_forces = st.number_input(
     "How many soldiers does each side have to allocate?", value=2)
-pop = Population.create(1000, num_locations, num_forces, 0.01)
-pop.run_simulation_dashboard(25000, 0.01)
+pop = Population.create(1000, num_locations, num_forces)
+pop.run_simulation(0.01, steps_between_saves=1000, step_limit=10000)
+pop.display_line_chart()

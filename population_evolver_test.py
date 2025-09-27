@@ -138,7 +138,7 @@ def test_run_simulation_big_step(monkeypatch):
     """Tests that leaving a simulation to run for many steps produces expected outcome"""
     player_chooses(['', "stop"], monkeypatch)
     population = Population.create(5, 2, 3)
-    population.run_simulation_console(1000, 0.1)
+    population.run_simulation(0.1, steps_between_saves=1000, terminal=True)
     assert max(population.strategies.values()) == population.strategies[(0, 3)]
 
 
@@ -146,7 +146,7 @@ def test_run_simulation_small_step(monkeypatch):
     """Tests that telling a simulation to run for many steps produces expected outcome"""
     player_chooses(['']*1000 + ["stop"], monkeypatch)
     population = Population.create(5, 2, 3)
-    population.run_simulation_console(1, 0.1)
+    population.run_simulation(0.1, steps_between_saves=1, terminal=True)
     assert max(population.strategies.values()) == population.strategies[(0, 3)]
 
 

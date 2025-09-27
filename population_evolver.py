@@ -70,19 +70,19 @@ def decide_game(strat_1: tuple, strat_2: tuple) -> int:
     return strat_2, strat_1
 
 
-def encode_tuple(tuple: tuple):
+def encode_tuple(tuple: tuple[int]) -> str:
     return ','.join(str(i) for i in tuple)
 
 
-def decode_tuple(tuple_str: str):
+def decode_tuple(tuple_str: str) -> tuple[int]:
     return tuple(int(num) for num in tuple_str.split(','))
 
 
-def encode_tuple_tuple(tuple_tuple: tuple[tuple]):
+def encode_tuple_tuple(tuple_tuple: tuple[tuple[int]]) -> str:
     return ' '.join(encode_tuple(tuple) for tuple in tuple_tuple)
 
 
-def decode_tuple_tuple(tuple_tuple_str: str):
+def decode_tuple_tuple(tuple_tuple_str: str) -> tuple[tuple[int]]:
     return tuple(decode_tuple(tuple_str) for tuple_str in tuple_tuple_str.split())
 
 
@@ -150,7 +150,7 @@ class Population():
         self.size = sum(self.strategies.values())
         strat = list(self.strategies.keys())[0]
         self.num_locations, self.num_forces = len(strat), sum(strat)
-        self.save_name = f'l{self.num_locations}f{self.num_forces}'
+        self.save_name = f'l{self.num_locations}f{self.num_forces}s{self.size}'
 
     def run_simulation_step(self, currrent_step: int, mutability: float) -> None:
         """Runs a single step of the evolutionary simulation"""
@@ -172,40 +172,45 @@ class Population():
             child, 0) + 1
         return None
 
-    def run_simulation_console(self, steps_between_print: int, mutability: float) -> None:
-        """Used for running the simulation from the console"""
-        current_step = 0
-        while input('Continue simulation?') != 'stop':
-            for _ in range(steps_between_print):
-                self.run_simulation_step(current_step, mutability)
-                current_step += 1
-            print('Current status:')
-            print(self)
-            self.save()
-
-    def run_simulation_dashboard(self, steps_between_print: int, mutability: float) -> None:
-        """Used for running the simulation from the dashboard"""
-        data = pd.DataFrame({'step': [], 'strat': [], 'count': []})
+    def run_simulation(self, mutability: float,
+                       steps_between_saves: int = -1,
+                       step_limit: int = -1,
+                       terminal: bool = False) -> None:
+        """Used to run the simulation."""
+        steps_between_saves = steps_between_saves or -1
+        step_limit = step_limit or -1
         current_step = 0
         while True:
-            for _ in range(steps_between_print):
+            while current_step != steps_between_saves:
                 current_step += 1
                 self.run_simulation_step(current_step, mutability)
-                current_population = pd.DataFrame({
-                    'strat': [','.join(str(num) for num in strat)
-                              for strat in self.strategies],
-                    'count': self.strategies.values()
-                })
-                current_population['step'] = current_step
-                data = pd.concat([data, current_population])
-            chart = alt.Chart(data).mark_line().encode(
-                x='step',
-                y='sum(count):Q',
-                color='strat:N'
-            ).properties(
-                width=2000
-            )
-            st.altair_chart(chart)
+                self.history = pd.concat(
+                    self.history,
+                    pd.DataFrame([{
+                        'strat': ','.join(str(num) for num in strat),
+                        'count': count,
+                        'step': current_step
+                    } for strat, count in self.strategies.items()])
+                )
+            self.save()
+            if terminal:
+                print('Current status:')
+                print(self)
+                if input('Continue simulation?') == 'stop':
+                    break
+            else:
+                if current_step == step_limit:
+                    break
+
+    def display_line_chart(self) -> None:
+        chart = alt.Chart(self.history).mark_line().encode(
+            x='step',
+            y='sum(count):Q',
+            color='strat:N'
+        ).properties(
+            width=2000
+        )
+        st.altair_chart(chart)
 
     def __str__(self):
         population_report = str(pd.DataFrame(
