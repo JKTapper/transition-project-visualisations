@@ -72,27 +72,51 @@ def decide_game(strat_1: tuple, strat_2: tuple) -> int:
 class Population():
     """A class for the population of strategies being simulated"""
 
-    def __init__(
-            self, size: int,
-            num_locations: int,
-            num_forces: int,
-            random_pop: bool = False
-    ) -> None:
+    @classmethod
+    def create(size: int,
+               num_locations: int,
+               num_forces: int,
+               random_pop: bool = False
+               ) -> None:
         """
         Creates an object of the population class, with
         either a random or uniformly weak population
         """
-        self.size = size
         if random_pop:
-            self.strategies = {}
+            strategies = {}
             for _ in range(size):
                 random_strat = get_random_strategy(num_locations, num_forces)
-                self.strategies[random_strat] = self.strategies.get(
+                strategies[random_strat] = strategies.get(
                     random_strat, 0) + 1
         else:
-            self.strategies = {(num_forces,)+(0,)*(num_locations-1): size}
-        self.history = self.strategies.copy()
-        self.solved_games = {}
+            strategies = {(num_forces,)+(0,)*(num_locations-1): size}
+        cumulative_strategies = strategies.copy()
+        solved_games = {}
+        history = pd.concat(pd.DataFrame(
+            {'step': 0, 'strat': strat, 'count': strategies[strat]} for strat in strategies))
+        return Population(
+            strategies,
+            cumulative_strategies,
+            solved_games,
+            history
+        )
+
+    @classmethod
+    def load():
+        pass
+
+    def __init__(
+        self,
+            strategies: dict[tuple[int]:int],
+            cumulative_strategies: dict[tuple[int]:int],
+            solved_games: dict[tuple[tuple[int]]:tuple],
+            history: pd.DataFrame
+    ):
+        self.strategies = strategies
+        self.cumulative_strategies = cumulative_strategies
+        self.solved_games = solved_games
+        self.history = history
+        self.size = sum(self.strategies.values())
 
     def run_simulation_step(self, currrent_step: int, mutability: float) -> None:
         """Runs a single step of the evolutionary simulation"""
