@@ -1,5 +1,7 @@
 """Streamlit code for the dashboard"""
 import streamlit as st
+import altair as alt
+import pandas as pd
 from population_evolver import Population
 
 st.title("General's Game Simulation")
@@ -36,8 +38,44 @@ with st.expander("See explanations"):
 
 num_locations = st.number_input(
     "How many locations are the two sides fighting to control?", value=4)
+
 num_forces = st.number_input(
     "How many soldiers does each side have to allocate?", value=2)
-pop = Population.create(1000, num_locations, num_forces)
-pop.run_simulation(0.01, steps_between_saves=1000, step_limit=10000)
-pop.display_line_chart()
+
+
+def display_line_chart(num_locations, num_forces):
+    history = pd.read_csv(f'l{num_locations}f{num_forces}s1000.csv')
+    st.write(history)
+    chart = alt.Chart(history).mark_line().encode(
+        x='step',
+        y='sum(count):Q',
+        color='strat:N'
+    ).properties(
+        width=2000
+    )
+    st.altair_chart(chart)
+
+
+step_limit = st.number_input(
+    "How many steps do you want the simulation to run for?", value=10000)
+
+
+def set_simulation() -> None:
+    try:
+        pop = Population.load(f'l{num_locations}f{num_forces}s1000')
+    except:
+        pop = Population.create(1000, num_locations, num_forces)
+
+    st.button("Go", on_click=run_simulation, args=(pop, step_limit))
+
+
+def run_simulation(pop, step_limit) -> None:
+    pop.run_simulation(0.01, steps_between_saves=1000, step_limit=step_limit)
+
+
+def display_chart() -> None:
+    display_line_chart(num_locations, num_forces)
+
+
+st.button('Run simulation', on_click=set_simulation)
+st.button('Display chart', on_click=display_chart)

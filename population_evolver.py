@@ -111,7 +111,7 @@ class Population():
         cumulative_strategies = strategies.copy()
         solved_games = {}
         history = pd.DataFrame(
-            {'step': 0, 'strat': strat, 'count': count} for strat, count in strategies.items())
+            {'step': 0, 'strat': encode_tuple(strat), 'count': count} for strat, count in strategies.items())
         return Population(
             strategies,
             cumulative_strategies,
@@ -151,15 +151,16 @@ class Population():
         strat = list(self.strategies.keys())[0]
         self.num_locations, self.num_forces = len(strat), sum(strat)
         self.save_name = f'l{self.num_locations}f{self.num_forces}s{self.size}'
+        self.current_step = max(history['step'])
 
-    def run_simulation_step(self, currrent_step: int, mutability: float) -> None:
+    def run_simulation_step(self, mutability: float) -> None:
         """Runs a single step of the evolutionary simulation"""
         strat_1, strat_2 = random.choices(
             list(self.strategies.keys()), self.strategies.values(), k=2)
         winner, loser = self.solved_games.get((strat_1, strat_2), decide_game(
             strat_1, strat_2))
         self.solved_games[(strat_1, strat_2)] = winner, loser
-        if currrent_step % 10 == 0:
+        if self.current_step % 10 == 0:
             current_prevelance = self.strategies[winner]/self.size
             historic_prevelance = self.cumulative_strategies[winner] / \
                 sum(self.cumulative_strategies.values())
@@ -174,24 +175,26 @@ class Population():
 
     def run_simulation(self, mutability: float,
                        steps_between_saves: int = -1,
-                       step_limit: int = -1,
+                       step_limit: int = 0,
                        terminal: bool = False) -> None:
         """Used to run the simulation."""
         steps_between_saves = steps_between_saves or -1
-        step_limit = step_limit or -1
-        current_step = 0
+        steps_in_this_run = 0
         while True:
-            while current_step != steps_between_saves:
-                current_step += 1
-                self.run_simulation_step(current_step, mutability)
-                self.history = pd.concat(
+            steps_after_last_save = 0
+            while steps_after_last_save != steps_between_saves:
+                self.current_step += 1
+                steps_in_this_run += 1
+                steps_after_last_save += 1
+                self.run_simulation_step(mutability)
+                self.history = pd.concat([
                     self.history,
                     pd.DataFrame([{
-                        'strat': ','.join(str(num) for num in strat),
+                        'strat': encode_tuple(strat),
                         'count': count,
-                        'step': current_step
+                        'step': self.current_step
                     } for strat, count in self.strategies.items()])
-                )
+                ])
             self.save()
             if terminal:
                 print('Current status:')
@@ -199,18 +202,9 @@ class Population():
                 if input('Continue simulation?') == 'stop':
                     break
             else:
-                if current_step == step_limit:
+                st.write(steps_in_this_run, step_limit)
+                if steps_in_this_run >= step_limit and step_limit:
                     break
-
-    def display_line_chart(self) -> None:
-        chart = alt.Chart(self.history).mark_line().encode(
-            x='step',
-            y='sum(count):Q',
-            color='strat:N'
-        ).properties(
-            width=2000
-        )
-        st.altair_chart(chart)
 
     def __str__(self):
         population_report = str(pd.DataFrame(
@@ -219,7 +213,7 @@ class Population():
 
     def save(self):
         with open(f'{self.save_name}.csv', 'w') as f:
-            self.history.to_csv(f)
+            self.history.to_csv(f, index=False)
         info = {
             'strategies': {encode_tuple(strat): count for strat, count in self.strategies.items()},
             'cumulative_strategies': {encode_tuple(strat): count for strat, count in self.cumulative_strategies.items()},
