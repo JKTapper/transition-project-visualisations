@@ -1,5 +1,7 @@
 """Streamlit code for the dashboard"""
 import streamlit as st
+import altair as alt
+import pandas as pd
 from population_evolver import Population
 
 st.title("General's Game Simulation")
@@ -36,7 +38,48 @@ with st.expander("See explanations"):
 
 num_locations = st.number_input(
     "How many locations are the two sides fighting to control?", value=4)
+
 num_forces = st.number_input(
     "How many soldiers does each side have to allocate?", value=2)
-pop = Population(1000, num_locations, num_forces, 0.01)
-pop.run_simulation_dashboard(25000, 0.01)
+
+
+def display_line_chart(file_name: str):
+    """Displays a line chart of the history of a given simulation"""
+    history = pd.read_csv(file_name)
+    st.write(history)
+    chart = alt.Chart(history).mark_line().encode(
+        x='step',
+        y='sum(count):Q',
+        color='strat:N'
+    ).properties(
+        width=2000
+    )
+    st.altair_chart(chart)
+
+
+step_limit = st.number_input(
+    "How many steps do you want the simulation to run for?", value=10000)
+
+
+def set_simulation() -> None:
+    """
+    Instantiates an instance of Population matching the user's
+    specifications and displays a button to run the simulation
+    """
+    try:
+        pop = Population.load(f'l{num_locations}f{num_forces}s1000')
+    except FileNotFoundError:
+        pop = Population.create(1000, num_locations, num_forces)
+
+    st.button("Go", on_click=run_simulation, args=(pop,))
+
+
+def run_simulation(pop) -> None:
+    """Runs the simulation"""
+    pop.run_simulation(0.01, 1000, step_limit)
+
+
+st.button('Run simulation', on_click=set_simulation)
+st.button('Display chart',
+          on_click=display_line_chart,
+          args=(f'l{num_locations}f{num_forces}s1000.csv',))
