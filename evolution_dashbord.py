@@ -43,8 +43,9 @@ num_forces = st.number_input(
     "How many soldiers does each side have to allocate?", value=2)
 
 
-def display_line_chart(num_locations, num_forces):
-    history = pd.read_csv(f'l{num_locations}f{num_forces}s1000.csv')
+def display_line_chart(file_name: str):
+    """Displays a line chart of the history of a given simulation"""
+    history = pd.read_csv(file_name)
     st.write(history)
     chart = alt.Chart(history).mark_line().encode(
         x='step',
@@ -61,21 +62,24 @@ step_limit = st.number_input(
 
 
 def set_simulation() -> None:
+    """
+    Instantiates an instance of Population matching the user's
+    specifications and displays a button to run the simulation
+    """
     try:
         pop = Population.load(f'l{num_locations}f{num_forces}s1000')
-    except:
+    except FileNotFoundError:
         pop = Population.create(1000, num_locations, num_forces)
 
-    st.button("Go", on_click=run_simulation, args=(pop, step_limit))
+    st.button("Go", on_click=run_simulation, args=(pop,))
 
 
-def run_simulation(pop, step_limit) -> None:
-    pop.run_simulation(0.01, steps_between_saves=1000, step_limit=step_limit)
-
-
-def display_chart() -> None:
-    display_line_chart(num_locations, num_forces)
+def run_simulation(pop) -> None:
+    """Runs the simulation"""
+    pop.run_simulation(0.01, 1000, step_limit)
 
 
 st.button('Run simulation', on_click=set_simulation)
-st.button('Display chart', on_click=display_chart)
+st.button('Display chart',
+          on_click=display_line_chart,
+          args=(f'l{num_locations}f{num_forces}s1000.csv',))

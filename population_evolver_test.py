@@ -89,16 +89,19 @@ def test_decide_game(strat_1: list, strat_2: list, result: int):
 def test_population_init():
     """Tests that populations get initialised correctly"""
     population = Population(
-        strategies=[1],
-        cumulative_strategies=2,
-        solved_games=3,
-        history=4
+        strategies={(1,): 1},
+        cumulative_strategies={(1,): 1},
+        solved_games={},
+        history=pd.DataFrame(
+            {'step': [1], 'strat': [(1,)], 'count': [1]}
+        )
     )
-    assert population.strategies == [1]
-    assert population.cumulative_strategies == 2
-    assert population.solved_games == 3
-    assert population.history == 4
-    assert population.size == 1
+    assert population.strategies == {(1,): 1}
+    assert population.cumulative_strategies == {(1,): 1}
+    assert population.solved_games == {}
+    assert population.history.equals(pd.DataFrame(
+        {'step': [1], 'strat': [(1,)], 'count': [1]}
+    ))
 
 
 def test_population_create():
@@ -118,7 +121,7 @@ def test_simulation_step_simple_win():
     population.strategies = {strat_1: 1, strat_2: 1}
     with patch("population_evolver.get_child") as child_mock:
         child_mock.return_value = 'child'
-        population.run_simulation_step(1, -1)
+        population.run_simulation_step(0)
     assert population.strategies in ({strat_1: 1, strat_2: 0, 'child': 1}, {
                                      strat_1: 0, strat_2: 1, 'child': 1})
 
@@ -129,7 +132,7 @@ def test_simulation_step_draw():
     strat_1 = (0, 0, 2)
     strat_2 = (1, 1, 0)
     population.strategies = {strat_1: 1, strat_2: 1}
-    population.run_simulation_step(1, -1)
+    population.run_simulation_step(0)
     assert population.strategies in (
         {strat_1: 2, strat_2: 0}, {strat_1: 1, strat_2: 1}, {strat_1: 0, strat_2: 2})
 
@@ -151,26 +154,35 @@ def test_run_simulation_small_step(monkeypatch):
 
 
 def test_population_saving_and_loading():
+    """Tests that populations get saved and loaded correctly"""
     population = Population(
         {(1, 0): 1},
         {(1, 0): 1},
         {},
-        pd.Dataframe({'step': [0], 'strat': [(1, 0)], 'count': 1})
+        pd.DataFrame({'step': [0], 'strat': [(1, 0)], 'count': [1]})
     )
     population.save_name = 'test'
     population.save()
     copy = Population.load('test')
-    assert population.history.equals(copy.history)
+    os.remove('test.json')
+    os.remove('test.csv')
+    print(population.history['strat'][0])
+    print(type(population.history['strat'][0]))
+    print(copy.history['strat'][0])
+    print(type(copy.history['strat'][0]))
+    pd.testing.assert_frame_equal(population.history, copy.history)
     assert population.strategies == copy.strategies
     assert population.cumulative_strategies == copy.cumulative_strategies
     assert population.solved_games == copy.solved_games
 
 
 def test_tuple_tuple_encoding():
+    """Tests that tuples of tuples get encoded correctly"""
     assert encode_tuple_tuple(
         ((1, 2, 3), (4, 5, 6), (7, 8, 9))) == '1,2,3 4,5,6 7,8,9'
 
 
 def test_tuple_tuple_decoding():
+    """Tests that strings get decoded into tuples of tuples correctly"""
     assert decode_tuple_tuple('1,2,3 4,5,6 7,8,9') == (
         (1, 2, 3), (4, 5, 6), (7, 8, 9))
