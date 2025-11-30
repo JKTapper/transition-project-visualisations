@@ -1,0 +1,42 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{lemma}[theorem]{Lemma}
+
+\title{Finite Symmetric Zero-Sum Win Loss Draw Games}
+\author{Joseph Tapper}
+\date{November 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\paragraph{This article explores a class of games defined by the following properties:}
+\begin{enumerate}
+    \item There are 2 players.
+    \item Each player can choose from the same set of moves \(\{x_1,x_2,\dots,x_n\}\).
+    \item Neither player knows what the other will play before making their choice.
+    \item Either one player wins and the other loses, leading to payoffs of 1 and -1 respectively, or they draw and each receive a payoff of 0.
+\end{enumerate}
+\paragraph{Now we establish some notation:}
+\paragraph{\(P\) is the payoff function. I.e if \(P(x_i,x_j) = p\) then that means that when player \(A\) plays \(x_i\) and player \(B\) plays \(x_j\) then player \(A\) receives payoff p. Note that, because our games are zero sum, \(P(x_i,x_j) = -P(x_j,x_i) \forall i,j \in (1,\dots,n)\). A game \(G\) is fully defined by its payoff function \(P_G\).}
+
+\paragraph{\(S\) is the set of possible mixed strategies. A mixed strategy is a probability distribution over available moves. A player playing a mixed strategy will select their move randomly using the probability distribution. If \(G\) has moves \(\{x_1,x_2,\dots,x_n\}\) then \(S = \{(x_1,x_2,\dots,x_n) \in \mathbb{R}^n \mid \sum_{i=1}^nx_i = 1, x_i \in [0,1] \forall i\}\).}
+
+\paragraph{We can now extend \(P\). We define \(P: S\times S\mapsto [0,1]\) such that \(P(s_1,s_2)\) is equal to the expected payoff for a player using strategy \(s_1\) against another player using \(s_2\). It is simple to prove that \(P(s_1,s_2) = -P(s_2,s_1)\).}
+
+\paragraph{We call \(n \in S\) an equilibrium strategy if the scenario when both players play \(n\) is a Nash equilibrium. This means that neither player can gain an advantage by changing their strategy. Formally, \(n\) is an equilibrium strategy if \(P(n,n) \geq P(s,n) \forall s \in S\). The Equilibrium space \(N \subset S\) is the set of equilibrium strategies within S.}
+
+\section{Basic properties of the equilibrium space}
+
+\theorem{The equilibrium space \(N\) is non empty.}
+\begin{proof}
+    placeholder
+\end{proof}
+\end{document}
